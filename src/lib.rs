@@ -164,7 +164,7 @@ pub fn read_in_rpeg_data(file_path: Option<&str>) -> Result<(Vec<[u8; 4]>, u32, 
 ///
 /// # Arguments
 ///
-/// * `raw_bytes` - A vector of four-byte arrays, each array representing a single word of
+/// * `raw_bytes` - A slice of four-byte arrays, each array representing a single word of
 ///    compressed image data
 /// * `width` - The width of the image
 /// * `height` - The height of the image
@@ -184,7 +184,7 @@ pub fn read_in_rpeg_data(file_path: Option<&str>) -> Result<(Vec<[u8; 4]>, u32, 
 /// // Output the rpeg data to stdout
 /// csc411_rpegio::output_rpeg_data(&raw_bytes, width, height);
 /// ```
-pub fn output_rpeg_data(raw_bytes: &Vec<[u8; 4]>, width: u32, height: u32) {
+pub fn output_rpeg_data(raw_bytes: &[[u8; 4]], width: u32, height: u32) {
     use std::io::Write;
 
     println!("Compressed image format 2");
