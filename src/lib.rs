@@ -140,12 +140,10 @@ pub fn read_in_rpeg_data(file_path: Option<&str>) -> (Vec<[u8; 4]>, u32, u32) {
         panic!("The number of raw bytes was not a multiple of four");
     }
 
-    let mut grouped_bytes: Vec<[u8; 4]> = vec![];
-
-    // TODO continue attempting to do this without reconstructing the group
-    for chunk in raw_bytes.chunks(4) {
-        grouped_bytes.push([chunk[0], chunk[1], chunk[2], chunk[3]]);
-    }
+    let grouped_bytes: Vec<[u8; 4]> = raw_bytes
+        .chunks_exact(4)
+        .map(|x| x.try_into().unwrap())
+        .collect();
 
     (grouped_bytes, width, height)
 }
@@ -231,8 +229,6 @@ pub fn debug_output_rpeg_data(raw_bytes: &Vec<[u8; 4]>, width: u32, height: u32)
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-
     #[test]
     fn test_no_tests() {
         panic!("I don't know how to test this because it is very dependent on exact i/o to stdio");
