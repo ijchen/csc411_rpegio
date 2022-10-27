@@ -2,7 +2,6 @@
 //!
 //! A collection functions to handle rpeg data i/o. Intended for use in URI's CSC 411 class.
 
-use std::error::Error;
 use std::iter::Peekable;
 
 fn expect(
@@ -16,8 +15,6 @@ fn expect(
                     return Err(format!(
                         "Expected 0x{expected_byte:02X}, found 0x{byte:02X}"
                     ));
-                } else {
-                    continue;
                 }
             }
             None => {
@@ -38,59 +35,51 @@ fn expect_newline(
         Some(0x0A) => Ok(()),
         // \r[\n] - Mostly Windows
         Some(0x0D) => {
+            // Check for a \n after the \r, consuming it if it exists
             if peekable_bytes_iter.peek() == Some(&0x0A) {
                 peekable_bytes_iter.next();
-                return Ok(());
-            } else {
-                Err("Unsupported line ending".to_string())
             }
+
+            Ok(())
         }
         Some(byte) => Err(format!("Expected newline byte(s), found 0x{byte:02X}")),
-        None => Err(format!("Ran out of bytes before expected newline byte(s)")),
+        None => Err("Ran out of bytes before expected newline byte(s)".to_string()),
     }
 }
 
-fn is_ascii_digit(byte: &u8) -> bool {
-    b'0' <= *byte && *byte <= b'9'
+fn is_ascii_digit(byte: u8) -> bool {
+    (b'0'..=b'9').contains(&byte)
 }
 
-fn parse_ascii_digit(digit: &u8) -> Result<u32, String> {
+fn parse_ascii_digit(digit: u8) -> Result<u32, String> {
     if !is_ascii_digit(digit) {
-        Err(format!("Attempted to parse non-ascii digit {:?}", digit))
+        Err(format!("Attempted to parse non-ascii digit {digit:?}"))
     } else {
-        Ok((*digit - b'0') as u32)
+        Ok((digit - b'0') as u32)
     }
 }
 
 fn read_u32(peekable_bytes_iter: &mut Peekable<impl Iterator<Item = u8>>) -> Result<u32, String> {
     // Read initial digit (there ought to be at least one)
-    let mut next_byte = peekable_bytes_iter.peek();
-    let mut num;
-    let error = format!("Didn't find a number where a number was expected in input");
-    let b = match next_byte {
-        None => {
-            return Err(error.clone());
-        }
-        Some(b) => {
-            if !is_ascii_digit(b) {
-                return Err(error.clone());
-            } else {
-                b
-            }
-        }
+    let mut next_byte = match peekable_bytes_iter.peek() {
+        Some(&byte) => byte,
+        None => return Err("Didn't find a number where a number was expected in input".to_string()),
     };
 
-    num = parse_ascii_digit(b)?;
+    let mut num = parse_ascii_digit(next_byte)?;
     peekable_bytes_iter.next();
-    next_byte = peekable_bytes_iter.peek();
 
     // Read any additional digits in the number
-    while next_byte.is_some() && is_ascii_digit(next_byte.ok_or(error.clone())?) {
-        num = num * 10 + parse_ascii_digit(next_byte.ok_or(error.clone())?)?;
+    while peekable_bytes_iter.peek().is_some()
+        && is_ascii_digit(*peekable_bytes_iter.peek().unwrap())
+    {
+        next_byte = peekable_bytes_iter.next().unwrap();
+        let digit = parse_ascii_digit(next_byte).unwrap();
 
-        peekable_bytes_iter.next();
-
-        next_byte = peekable_bytes_iter.peek();
+        num = num
+            .checked_mul(10)
+            .and_then(|num| num.checked_add(digit))
+            .ok_or("Integer overflow while parsing u32".to_string())?;
     }
 
     Ok(num)
@@ -99,7 +88,6 @@ fn read_u32(peekable_bytes_iter: &mut Peekable<impl Iterator<Item = u8>>) -> Res
 fn read_raw_bytes(file_path: Option<&str>) -> Result<Vec<u8>, std::io::Error> {
     let mut raw_reader: Box<dyn std::io::BufRead> = match file_path {
         Some(file_path) => Box::new(std::io::BufReader::new(std::fs::File::open(file_path)?)),
-
         None => Box::new(std::io::BufReader::new(std::io::stdin())),
     };
 
@@ -111,7 +99,7 @@ fn read_raw_bytes(file_path: Option<&str>) -> Result<Vec<u8>, std::io::Error> {
 }
 
 /// Reads and parses rpeg data from either stdin or a file.
-/// Returns a Result<tuple, Box<dyn Error>>  containing, in order:
+/// Returns a Result<tuple, String> where the tuple contains, in order:
 /// 1. A `Vec<[u8; 4]>` (Vector of four-byte arrays) representing the raw image data
 /// 2. A `u32` representing the width of the image
 /// 3. A `u32` representing the height of the image
@@ -126,11 +114,10 @@ fn read_raw_bytes(file_path: Option<&str>) -> Result<Vec<u8>, std::io::Error> {
 ///
 /// * `file_path` - An optional file path to read from. If None, stdin will be read from instead
 ///
-///
 /// # Examples
-/// ```
+/// ```no_run
 /// // Read rpeg data from stdin to variables for later use
-/// let (raw_bytes, width, height) = csc411_rpegio::read_in_rpeg_data(Some("path/to/file.ppm"))?;
+/// let (raw_bytes, width, height) = csc411_rpegio::read_in_rpeg_data(Some("path/to/file.ppm")).unwrap();
 ///
 /// // Do something with width and height. This is just an example
 /// println!("Image size: {width}x{height}");
@@ -138,11 +125,10 @@ fn read_raw_bytes(file_path: Option<&str>) -> Result<Vec<u8>, std::io::Error> {
 /// // Do something with raw_bytes
 /// // you will likely first want to convert the four-byte arrays to u32s
 /// ```
-pub fn read_in_rpeg_data(
-    file_path: Option<&str>,
-) -> Result<(Vec<[u8; 4]>, u32, u32), Box<dyn Error>> {
+pub fn read_in_rpeg_data(file_path: Option<&str>) -> Result<(Vec<[u8; 4]>, u32, u32), String> {
     // Read stdin as bytes
-    let bytes = read_raw_bytes(file_path)?;
+    let bytes = read_raw_bytes(file_path)
+        .map_err(|_| "Error reading raw bytes from the input".to_string())?;
     let mut peekable_bytes_iter = bytes.into_iter().peekable();
 
     // Read "Compressed image format 2\n" part of header
@@ -163,7 +149,7 @@ pub fn read_in_rpeg_data(
         return Err(format!(
             "The number of raw bytes ({}) was not a multiple of four",
             raw_bytes.len()
-        ))?;
+        ));
     }
 
     let grouped_bytes: Vec<[u8; 4]> = raw_bytes
@@ -183,6 +169,10 @@ pub fn read_in_rpeg_data(
 /// * `width` - The width of the image
 /// * `height` - The height of the image
 ///
+/// # Panics
+///
+/// * If something goes wrong writing raw bytes to stdout
+///
 /// # Examples
 /// ```
 /// // In your program, this rpeg data would be generated by compressing a .ppm file.
@@ -201,10 +191,9 @@ pub fn output_rpeg_data(raw_bytes: &Vec<[u8; 4]>, width: u32, height: u32) {
     println!("{width} {height}");
 
     for bytes in raw_bytes {
-        #[allow(unused_must_use)]
-        {
-            std::io::stdout().write(bytes);
-        }
+        std::io::stdout()
+            .write_all(bytes)
+            .expect("Failed to write raw bytes to stdout");
     }
 }
 
