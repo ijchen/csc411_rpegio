@@ -202,7 +202,7 @@ pub fn output_rpeg_data(raw_bytes: &[[u8; 4]], width: u32, height: u32) {
 ///
 /// # Arguments
 ///
-/// * `raw_bytes` - A vector of four-byte arrays, each array representing a single word of
+/// * `raw_bytes` - A slice of four-byte arrays, each array representing a single word of
 ///    compressed image data
 /// * `width` - The width of the image
 /// * `height` - The height of the image
@@ -223,7 +223,7 @@ pub fn output_rpeg_data(raw_bytes: &[[u8; 4]], width: u32, height: u32) {
 /// // 2 1
 /// // 00 11 22 33 44 55 66 77
 /// ```
-pub fn debug_output_rpeg_data(raw_bytes: &Vec<[u8; 4]>, width: u32, height: u32) {
+pub fn debug_output_rpeg_data(raw_bytes: &[[u8; 4]], width: u32, height: u32) {
     println!("Compressed image format 2 [DEBUG]");
     println!("{width} {height}");
 
