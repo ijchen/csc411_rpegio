@@ -17,7 +17,7 @@ fn expect(
                         "Expected 0x{expected_byte:02X}, found 0x{byte:02X}"
                     ));
                 } else {
-                    return Ok(());
+                    continue;
                 }
             }
             None => {
