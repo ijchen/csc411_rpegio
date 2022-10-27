@@ -160,7 +160,10 @@ pub fn read_in_rpeg_data(
 
     // Group the bytes in groups of 4
     if raw_bytes.len() % 4 != 0 {
-        panic!("The number of raw bytes was not a multiple of four");
+        return Err(format!(
+            "The number of raw bytes ({}) was not a multiple of four",
+            raw_bytes.len()
+        ))?;
     }
 
     let mut grouped_bytes: Vec<[u8; 4]> = vec![];
