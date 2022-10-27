@@ -110,25 +110,27 @@ fn read_raw_bytes(file_path: Option<&str>) -> Result<Vec<u8>, std::io::Error> {
     Ok(buffer)
 }
 
-/// Reads and parses rpeg data from either stdin or a file. Returns a tuple containing, in order:
+/// Reads and parses rpeg data from either stdin or a file.
+/// Returns a Result<tuple, Box<dyn Error>>  containing, in order:
 /// 1. A `Vec<[u8; 4]>` (Vector of four-byte arrays) representing the raw image data
 /// 2. A `u32` representing the width of the image
 /// 3. A `u32` representing the height of the image
 ///
-/// # Arguments
-///
-/// * `file_path` - An optional file path to read from. If None, stdin will be read from instead
-///
-/// # Panics
+/// # Errors Returned
 ///
 /// * If there is an unexpected error reading from the provided file or stdin
 /// * If the rpeg data header is badly formatted
 /// * If the number of raw bytes following the header is not a multiple of 4
 ///
+/// # Arguments
+///
+/// * `file_path` - An optional file path to read from. If None, stdin will be read from instead
+///
+///
 /// # Examples
 /// ```
 /// // Read rpeg data from stdin to variables for later use
-/// let (raw_bytes, width, height) = csc411_rpegio::read_in_rpeg_data(Some("path/to/file.ppm"));
+/// let (raw_bytes, width, height) = csc411_rpegio::read_in_rpeg_data(Some("path/to/file.ppm"))?;
 ///
 /// // Do something with width and height. This is just an example
 /// println!("Image size: {width}x{height}");
